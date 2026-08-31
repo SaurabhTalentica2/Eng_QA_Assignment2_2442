@@ -1,0 +1,139 @@
+{
+  "target": "http://localhost:5000",
+  "endpoints": [
+    {
+      "id": "EP001",
+      "method": "GET",
+      "path": "/users/v1",
+      "purpose": "List all users",
+      "auth_required": false,
+      "parameters": [],
+      "category": "User Management",
+      "risk_level": "High"
+    },
+    {
+      "id": "EP002",
+      "method": "POST",
+      "path": "/users/v1/register",
+      "purpose": "User registration",
+      "auth_required": false,
+      "parameters": [
+        "username",
+        "password",
+        "email"
+      ],
+      "category": "User Management",
+      "risk_level": "High"
+    },
+    {
+      "id": "EP003",
+      "method": "POST",
+      "path": "/users/v1/login",
+      "purpose": "User authentication",
+      "auth_required": false,
+      "parameters": [
+        "username",
+        "password"
+      ],
+      "category": "User Management",
+      "risk_level": "High"
+    },
+    {
+      "id": "EP004",
+      "method": "GET",
+      "path": "/users/v1/{username}",
+      "purpose": "Get specific user details",
+      "auth_required": false,
+      "parameters": [
+        "username"
+      ],
+      "category": "User Management",
+      "risk_level": "High"
+    },
+    {
+      "id": "EP005",
+      "method": "DELETE",
+      "path": "/users/v1/{username}",
+      "purpose": "Delete user account",
+      "auth_required": true,
+      "parameters": [
+        "username"
+      ],
+      "category": "User Management",
+      "risk_level": "High"
+    },
+    {
+      "id": "EP006",
+      "method": "PUT",
+      "path": "/users/v1/{username}/email",
+      "purpose": "Update user email",
+      "auth_required": true,
+      "parameters": [
+        "email"
+      ],
+      "category": "User Management",
+      "risk_level": "High"
+    },
+    {
+      "id": "EP007",
+      "method": "PUT",
+      "path": "/users/v1/{username}/password",
+      "purpose": "Update user password",
+      "auth_required": true,
+      "parameters": [
+        "password"
+      ],
+      "category": "User Management",
+      "risk_level": "Medium"
+    },
+    {
+      "id": "EP008",
+      "method": "GET",
+      "path": "/books/v1",
+      "purpose": "List all books",
+      "auth_required": true,
+      "parameters": [],
+      "category": "Book Management",
+      "risk_level": "Low"
+    },
+    {
+      "id": "EP009",
+      "method": "POST",
+      "path": "/books/v1",
+      "purpose": "Add new book",
+      "auth_required": true,
+      "parameters": [
+        "book_title",
+        "secret"
+      ],
+      "category": "Book Management",
+      "risk_level": "Medium"
+    },
+    {
+      "id": "EP010",
+      "method": "GET",
+      "path": "/books/v1/{book_title}",
+      "purpose": "Get book by title",
+      "auth_required": true,
+      "parameters": [
+        "book_title"
+      ],
+      "category": "Book Management",
+      "risk_level": "Medium"
+    }
+  ],
+  "notes": [
+    "OpenAPI spec retrieved and parsed.",
+    "Spec advertises 12 path(s).",
+    "GET /users/v1: reachable (HTTP 200).",
+    "POST /users/v1/register: reachable (HTTP 400).",
+    "POST /users/v1/login: reachable (HTTP 400).",
+    "GET /users/v1/{username}: reachable (HTTP 200).",
+    "DELETE /users/v1/{username}: reachable (HTTP 401).",
+    "PUT /users/v1/{username}/email: reachable (HTTP 401).",
+    "PUT /users/v1/{username}/password: reachable (HTTP 401).",
+    "GET /books/v1: reachable (HTTP 200).",
+    "POST /books/v1: reachable (HTTP 401).",
+    "GET /books/v1/{book_title}: reachable (HTTP 401)."
+  ]
+}

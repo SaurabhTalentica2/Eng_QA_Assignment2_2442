@@ -1,0 +1,107 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>VAmPI Security Assessment</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem auto; max-width: 900px; color: #1a1a1a; }
+  h1 { border-bottom: 3px solid #333; padding-bottom: .3rem; }
+  .badge { color: #fff; padding: 2px 10px; border-radius: 12px; font-size: .8rem; margin-left: 8px; }
+  table { border-collapse: collapse; width: 100%; margin: .5rem 0 1.5rem; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+  th { background: #f5f5f5; width: 140px; }
+  .finding { border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+  pre { background: #f7f7f7; padding: 8px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
+  code { background: #f0f0f0; padding: 1px 4px; border-radius: 4px; }
+</style></head><body>
+  <h1>VAmPI API Security Assessment</h1>
+  <p><strong>Target:</strong> <code>http://localhost:5000</code></p>
+  <p><strong>Summary:</strong> <span class="badge" style="background:#b71c1c">Critical: 2</span> <span class="badge" style="background:#e65100">High: 3</span> <span class="badge" style="background:#f9a825">Medium: 1</span></p>
+
+  <h2>Executive Summary</h2>
+  <p>A comprehensive API security assessment of the VAmPI application was conducted, evaluating 10 discovered endpoints against the OWASP API Security Top 10 framework. The evaluation revealed a severely compromised security posture, identifying 6 confirmed vulnerabilities—comprising two Critical, three High, and one Medium severity finding. The most severe threats involve a Critical Broken Object Level Authorization (BOLA) flaw on the password modification endpoint (CVSS 9.3) and a Critical Mass Assignment vulnerability during user registration (CVSS 9.1), which together enable unauthorized password overrides and arbitrary privilege escalation. Furthermore, High-severity access control and authentication weaknesses allow unauthenticated access to private user records, sensitive data leaks via a debug endpoint, and JWT token manipulation. The login interface also lacks basic rate-limiting controls, leaving the application highly susceptible to automated brute-force attacks. Collectively, these vulnerabilities expose the business to severe risks of total account takeover, administrative privilege compromise, and extensive unauthorized data exposure, requiring immediate prioritized remediation.</p>
+
+  <h2>Discovered Endpoints (10)</h2>
+  <table>
+    <tr><th>ID</th><th>Method</th><th>Path</th><th>Category</th><th>Risk</th></tr>
+    <tr><td>EP001</td><td><code>GET</code></td><td><code>/users/v1</code></td><td>User Management</td><td>High</td></tr><tr><td>EP002</td><td><code>POST</code></td><td><code>/users/v1/register</code></td><td>User Management</td><td>High</td></tr><tr><td>EP003</td><td><code>POST</code></td><td><code>/users/v1/login</code></td><td>User Management</td><td>High</td></tr><tr><td>EP004</td><td><code>GET</code></td><td><code>/users/v1/{username}</code></td><td>User Management</td><td>High</td></tr><tr><td>EP005</td><td><code>DELETE</code></td><td><code>/users/v1/{username}</code></td><td>User Management</td><td>High</td></tr><tr><td>EP006</td><td><code>PUT</code></td><td><code>/users/v1/{username}/email</code></td><td>User Management</td><td>High</td></tr><tr><td>EP007</td><td><code>PUT</code></td><td><code>/users/v1/{username}/password</code></td><td>User Management</td><td>Medium</td></tr><tr><td>EP008</td><td><code>GET</code></td><td><code>/books/v1</code></td><td>Book Management</td><td>Low</td></tr><tr><td>EP009</td><td><code>POST</code></td><td><code>/books/v1</code></td><td>Book Management</td><td>Medium</td></tr><tr><td>EP010</td><td><code>GET</code></td><td><code>/books/v1/{book_title}</code></td><td>Book Management</td><td>Medium</td></tr>
+  </table>
+
+  <h2>Vulnerability Findings (6)</h2>
+  
+        <div class="finding">
+          <h3>VULN_MASS &middot; Mass Assignment allows privilege escalation at registration
+            <span class="badge" style="background:#b71c1c">Critical &middot; CVSS 9.1</span>
+          </h3>
+          <table>
+            <tr><th>OWASP</th><td>API6:2019 Mass Assignment</td></tr>
+            <tr><th>Endpoint</th><td><code>POST /users/v1/register</code></td></tr>
+            <tr><th>CVSS Vector</th><td><code>CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N</code></td></tr>
+            <tr><th>Description</th><td>Registration binds client-supplied fields directly to the user model, so an attacker can set admin=true and self-provision administrator privileges.</td></tr>
+            <tr><th>Evidence (PoC)</th><td><pre>POST /users/v1/register with admin=true -&gt; 200. GET /users/v1/admintest_d32c5e9f shows admin flag set: {&quot;admin&quot;: true, &quot;email&quot;: &quot;qa_e67734b4@example.com&quot;, &quot;password&quot;: &quot;Password123!&quot;, &quot;username&quot;: &quot;admintest_d32c5e9f&quot;}</pre></td></tr>
+            <tr><th>Remediation</th><td>Bind only an explicit allow-list of fields (username, password, email). Never accept privilege/role fields from client input.</td></tr>
+          </table>
+        </div>
+        <div class="finding">
+          <h3>VULN_BOLA &middot; Broken Object Level Authorization on user modification
+            <span class="badge" style="background:#b71c1c">Critical &middot; CVSS 9.3</span>
+          </h3>
+          <table>
+            <tr><th>OWASP</th><td>API1:2019 Broken Object Level Authorization</td></tr>
+            <tr><th>Endpoint</th><td><code>PUT /users/v1/{username}/password</code></td></tr>
+            <tr><th>CVSS Vector</th><td><code>CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H</code></td></tr>
+            <tr><th>Description</th><td>An authenticated user can modify another user&#x27;s object (password) because the server does not verify that the token owner matches the targeted username.</td></tr>
+            <tr><th>Evidence (PoC)</th><td><pre>Attacker &#x27;attacker_6820374d&#x27; token used to PUT /users/v1/victim_278de321/password -&gt; 204; subsequent login as victim with attacker-set password succeeded.</pre></td></tr>
+            <tr><th>Remediation</th><td>Enforce object-level authorization: derive the target user from the authenticated token, not from the path parameter, or verify ownership before mutating.</td></tr>
+          </table>
+        </div>
+        <div class="finding">
+          <h3>VULN_EDE &middot; Excessive Data Exposure via debug endpoint
+            <span class="badge" style="background:#e65100">High &middot; CVSS 7.5</span>
+          </h3>
+          <table>
+            <tr><th>OWASP</th><td>API3:2019 Excessive Data Exposure</td></tr>
+            <tr><th>Endpoint</th><td><code>GET /users/v1/_debug</code></td></tr>
+            <tr><th>CVSS Vector</th><td><code>CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N</code></td></tr>
+            <tr><th>Description</th><td>An undocumented debug endpoint returns full user records including plaintext passwords and email addresses for every user, to any unauthenticated caller.</td></tr>
+            <tr><th>Evidence (PoC)</th><td><pre>GET /users/v1/_debug -&gt; 200 and exposes password fields. Sample: {&quot;users&quot;: [{&quot;admin&quot;: false, &quot;email&quot;: &quot;mail1@mail.com&quot;, &quot;password&quot;: &quot;pass1&quot;, &quot;username&quot;: &quot;name1&quot;}, {&quot;admin&quot;: false, &quot;email&quot;: &quot;mail2@mail.com&quot;, &quot;password&quot;: &quot;pass2&quot;, &quot;username&quot;: &quot;name2&quot;}, {&quot;admin&quot;: true, &quot;email&quot;: &quot;admin@mail.com&quot;, &quot;password&quot;: &quot;pass1&quot;, &quot;username&quot;: &quot;admin&quot;}, {&quot;admin&quot;: false, &quot;email&quot;: &quot;qa_9d430c2a@example.com&quot;, &quot;password&quot;: &quot;Password123!&quot;, &quot;username&quot;: &quot;qa_79ba3071&quot;}, {&quot;admin&quot;: true, &quot;ema</pre></td></tr>
+            <tr><th>Remediation</th><td>Remove debug endpoints from production builds, never return password fields, and enforce authentication/authorization on all user data endpoints.</td></tr>
+          </table>
+        </div>
+        <div class="finding">
+          <h3>VULN_JWT &middot; Weak JWT authentication configuration
+            <span class="badge" style="background:#e65100">High &middot; CVSS 7.3</span>
+          </h3>
+          <table>
+            <tr><th>OWASP</th><td>API2:2019 Broken User Authentication</td></tr>
+            <tr><th>Endpoint</th><td><code>POST /users/v1/login</code></td></tr>
+            <tr><th>CVSS Vector</th><td><code>CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N</code></td></tr>
+            <tr><th>Description</th><td>The JWT issued at login has weaknesses that undermine authentication: HS256 (symmetric) signing - vulnerable if secret is weak/guessable.</td></tr>
+            <tr><th>Evidence (PoC)</th><td><pre>JWT header={&quot;alg&quot;: &quot;HS256&quot;, &quot;typ&quot;: &quot;JWT&quot;} payload={&quot;exp&quot;: 1788160196, &quot;iat&quot;: 1788160136, &quot;sub&quot;: &quot;qa_c2961b83&quot;}</pre></td></tr>
+            <tr><th>Remediation</th><td>Use a strong, secret-managed signing key (or asymmetric RS256), enforce short-lived tokens with an &#x27;exp&#x27; claim, and reject &#x27;none&#x27;.</td></tr>
+          </table>
+        </div>
+        <div class="finding">
+          <h3>VULN_BFLA &middot; Unauthenticated access to user records
+            <span class="badge" style="background:#e65100">High &middot; CVSS 7.5</span>
+          </h3>
+          <table>
+            <tr><th>OWASP</th><td>API5:2019 Broken Function Level Authorization</td></tr>
+            <tr><th>Endpoint</th><td><code>GET /users/v1/{username}</code></td></tr>
+            <tr><th>CVSS Vector</th><td><code>CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N</code></td></tr>
+            <tr><th>Description</th><td>The user-detail endpoint returns any user&#x27;s record to an unauthenticated caller, enabling account enumeration and unauthorized information disclosure.</td></tr>
+            <tr><th>Evidence (PoC)</th><td><pre>GET /users/v1/admin sent with NO Authorization header -&gt; 200, returned: {&quot;username&quot;: &quot;admin&quot;, &quot;email&quot;: &quot;admin@mail.com&quot;}</pre></td></tr>
+            <tr><th>Remediation</th><td>Require authentication and enforce function-level authorization so users can only read records they are permitted to access.</td></tr>
+          </table>
+        </div>
+        <div class="finding">
+          <h3>VULN_RATE &middot; Missing rate limiting on authentication
+            <span class="badge" style="background:#f9a825">Medium &middot; CVSS 5.3</span>
+          </h3>
+          <table>
+            <tr><th>OWASP</th><td>API4:2019 Lack of Resources &amp; Rate Limiting</td></tr>
+            <tr><th>Endpoint</th><td><code>POST /users/v1/login</code></td></tr>
+            <tr><th>CVSS Vector</th><td><code>CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N</code></td></tr>
+            <tr><th>Description</th><td>The login endpoint accepts unlimited authentication attempts with no throttling or account lockout, enabling brute-force and credential-stuffing attacks.</td></tr>
+            <tr><th>Evidence (PoC)</th><td><pre>12 consecutive failed logins all succeeded without a 429/lockout. HTTP codes observed: [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200]</pre></td></tr>
+            <tr><th>Remediation</th><td>Apply per-IP and per-account rate limiting, exponential backoff, and account lockout after repeated failures.</td></tr>
+          </table>
+        </div>
+</body></html>

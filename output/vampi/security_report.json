@@ -1,0 +1,84 @@
+{
+  "target": "http://localhost:5000",
+  "executive_summary": "A comprehensive API security assessment of the VAmPI application was conducted, evaluating 10 discovered endpoints against the OWASP API Security Top 10 framework. The evaluation revealed a severely compromised security posture, identifying 6 confirmed vulnerabilities\u2014comprising two Critical, three High, and one Medium severity finding. The most severe threats involve a Critical Broken Object Level Authorization (BOLA) flaw on the password modification endpoint (CVSS 9.3) and a Critical Mass Assignment vulnerability during user registration (CVSS 9.1), which together enable unauthorized password overrides and arbitrary privilege escalation. Furthermore, High-severity access control and authentication weaknesses allow unauthenticated access to private user records, sensitive data leaks via a debug endpoint, and JWT token manipulation. The login interface also lacks basic rate-limiting controls, leaving the application highly susceptible to automated brute-force attacks. Collectively, these vulnerabilities expose the business to severe risks of total account takeover, administrative privilege compromise, and extensive unauthorized data exposure, requiring immediate prioritized remediation.",
+  "vulnerabilities": [
+    {
+      "id": "VULN_EDE",
+      "name": "Excessive Data Exposure via debug endpoint",
+      "owasp_category": "API3:2019 Excessive Data Exposure",
+      "endpoint": "GET /users/v1/_debug",
+      "severity": "High",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+      "description": "An undocumented debug endpoint returns full user records including plaintext passwords and email addresses for every user, to any unauthenticated caller.",
+      "evidence": "GET /users/v1/_debug -> 200 and exposes password fields. Sample: {\"users\": [{\"admin\": false, \"email\": \"mail1@mail.com\", \"password\": \"pass1\", \"username\": \"name1\"}, {\"admin\": false, \"email\": \"mail2@mail.com\", \"password\": \"pass2\", \"username\": \"name2\"}, {\"admin\": true, \"email\": \"admin@mail.com\", \"password\": \"pass1\", \"username\": \"admin\"}, {\"admin\": false, \"email\": \"qa_9d430c2a@example.com\", \"password\": \"Password123!\", \"username\": \"qa_79ba3071\"}, {\"admin\": true, \"ema",
+      "remediation": "Remove debug endpoints from production builds, never return password fields, and enforce authentication/authorization on all user data endpoints.",
+      "confirmed": true
+    },
+    {
+      "id": "VULN_JWT",
+      "name": "Weak JWT authentication configuration",
+      "owasp_category": "API2:2019 Broken User Authentication",
+      "endpoint": "POST /users/v1/login",
+      "severity": "High",
+      "cvss_score": 7.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
+      "description": "The JWT issued at login has weaknesses that undermine authentication: HS256 (symmetric) signing - vulnerable if secret is weak/guessable.",
+      "evidence": "JWT header={\"alg\": \"HS256\", \"typ\": \"JWT\"} payload={\"exp\": 1788160196, \"iat\": 1788160136, \"sub\": \"qa_c2961b83\"}",
+      "remediation": "Use a strong, secret-managed signing key (or asymmetric RS256), enforce short-lived tokens with an 'exp' claim, and reject 'none'.",
+      "confirmed": true
+    },
+    {
+      "id": "VULN_MASS",
+      "name": "Mass Assignment allows privilege escalation at registration",
+      "owasp_category": "API6:2019 Mass Assignment",
+      "endpoint": "POST /users/v1/register",
+      "severity": "Critical",
+      "cvss_score": 9.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+      "description": "Registration binds client-supplied fields directly to the user model, so an attacker can set admin=true and self-provision administrator privileges.",
+      "evidence": "POST /users/v1/register with admin=true -> 200. GET /users/v1/admintest_d32c5e9f shows admin flag set: {\"admin\": true, \"email\": \"qa_e67734b4@example.com\", \"password\": \"Password123!\", \"username\": \"admintest_d32c5e9f\"}",
+      "remediation": "Bind only an explicit allow-list of fields (username, password, email). Never accept privilege/role fields from client input.",
+      "confirmed": true
+    },
+    {
+      "id": "VULN_BOLA",
+      "name": "Broken Object Level Authorization on user modification",
+      "owasp_category": "API1:2019 Broken Object Level Authorization",
+      "endpoint": "PUT /users/v1/{username}/password",
+      "severity": "Critical",
+      "cvss_score": 9.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "description": "An authenticated user can modify another user's object (password) because the server does not verify that the token owner matches the targeted username.",
+      "evidence": "Attacker 'attacker_6820374d' token used to PUT /users/v1/victim_278de321/password -> 204; subsequent login as victim with attacker-set password succeeded.",
+      "remediation": "Enforce object-level authorization: derive the target user from the authenticated token, not from the path parameter, or verify ownership before mutating.",
+      "confirmed": true
+    },
+    {
+      "id": "VULN_RATE",
+      "name": "Missing rate limiting on authentication",
+      "owasp_category": "API4:2019 Lack of Resources & Rate Limiting",
+      "endpoint": "POST /users/v1/login",
+      "severity": "Medium",
+      "cvss_score": 5.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "description": "The login endpoint accepts unlimited authentication attempts with no throttling or account lockout, enabling brute-force and credential-stuffing attacks.",
+      "evidence": "12 consecutive failed logins all succeeded without a 429/lockout. HTTP codes observed: [200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 200]",
+      "remediation": "Apply per-IP and per-account rate limiting, exponential backoff, and account lockout after repeated failures.",
+      "confirmed": true
+    },
+    {
+      "id": "VULN_BFLA",
+      "name": "Unauthenticated access to user records",
+      "owasp_category": "API5:2019 Broken Function Level Authorization",
+      "endpoint": "GET /users/v1/{username}",
+      "severity": "High",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+      "description": "The user-detail endpoint returns any user's record to an unauthenticated caller, enabling account enumeration and unauthorized information disclosure.",
+      "evidence": "GET /users/v1/admin sent with NO Authorization header -> 200, returned: {\"username\": \"admin\", \"email\": \"admin@mail.com\"}",
+      "remediation": "Require authentication and enforce function-level authorization so users can only read records they are permitted to access.",
+      "confirmed": true
+    }
+  ]
+}
